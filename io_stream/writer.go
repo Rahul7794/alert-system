@@ -1,20 +1,14 @@
 package io_stream
 
 import (
-	"alert-system/model"
-	"encoding/json"
+	"fmt"
 	"os"
 )
 
-func WriteJson(filename string, alerts []model.AlertFormat) error {
+func Writer(filename string) (*os.File, error) {
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, os.ModePerm)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("cannot open the file %v", err)
 	}
-	defer file.Close()
-	encoder := json.NewEncoder(file)
-	for _, alert := range alerts {
-		encoder.Encode(&alert)
-	}
-	return nil
+	return file, nil
 }

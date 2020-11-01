@@ -8,53 +8,111 @@ import (
 	"math"
 )
 
+// 5 minutes rolling window in seconds
 const rollingAverageInSec int = 300
 
 type AlertProcessorInterface interface {
-	ProcessAlerts(decoder *json.Decoder) ([]model.AlertFormat, error)
+	ProcessAlerts(out chan<- *model.AlertFormat, errors chan<- error)
+	SendAlert(in *model.AlertFormat) error
 }
 
+// AlertProcessor Process the alerts.
 type AlertProcessor struct {
-	Decoder *json.Decoder
+	Decoder *json.Decoder // Decoder stream the rates from the input file.
+	Encoder *json.Encoder // Encoder stream the alerts to the output file.
 }
 
+// checkSpotRateChange checks if there rate has dropped/increased by 10%.
 func checkSpotRateChange(currentValue, previousValue float64) bool {
 	changePercent := ((currentValue - previousValue) / previousValue) * 100.0
-	if math.Abs(changePercent) > 10 {
-		return true
-	}
-	return false
+	return math.Abs(changePercent) > 10
 }
 
-func (a *AlertProcessor) ProcessAlerts() ([]model.AlertFormat, error) {
-	var alerts []model.AlertFormat
-	mapData := make(map[string]*moving_mean.MovingMean)
+// ProcessAlerts consumes stream of currency conversion rates and produces alerts for a number of situations.
+func (a *AlertProcessor) ProcessAlerts(out chan<- *model.AlertFormat, errors chan<- error) {
+	// create a Map to store moving average for each currency pair => Map[CurrencyPair, MovingAverage]
+	currencyPairRates := make(map[string]*moving_mean.MovingMean)
+	// Decoder.More() streams the json until reaches EOF
 	for a.Decoder.More() {
-		var currencyConRate model.CurrencyConversionRates
-		err := a.Decoder.Decode(&currencyConRate)
+		// Deserialize json to CurrencyConversionRates
+		var currentRates model.CurrencyConversionRates
+		err := a.Decoder.Decode(&currentRates)
 		if err != nil {
-			return nil, fmt.Errorf("error decoding the json %v", err)
+			// Outputs error to the out <- channel, if there is an error deserializing json.
+			errors <- err
+			return
 		}
-		if currencyRates, ok := mapData[currencyConRate.CurrencyPair]; ok {
-			currencyRates.Add(floatRound(currencyConRate.Rate, 5))
-			mapData[currencyConRate.CurrencyPair] = currencyRates
-			if checkSpotRateChange(floatRound(currencyConRate.Rate, 5), floatRound(currencyRates.Average(), 5)) {
-				alerts = append(alerts, model.AlertFormat{
-					Timestamp:    currencyConRate.Timestamp,
-					CurrencyPair: currencyConRate.CurrencyPair,
+		// Check if currencyPair key exists in the Map
+		// if exists add the rates of the currencyPair to the movingMean
+		// and calculate the moving mean and check for > 10% change in rate
+		if movingMean, ok := currencyPairRates[currentRates.CurrencyPair]; ok {
+			// Add rates to the movingMean
+			movingMean.Add(currentRates.Rate)
+			currencyPairRates[currentRates.CurrencyPair] = movingMean
+			// Check for > 10% change in rate
+			if checkSpotRateChange(currentRates.Rate, floatRound(movingMean.Average(), 5)) {
+				// if there is > 10% change, send the alert in the channel
+				out <- &model.AlertFormat{
+					Timestamp:    currentRates.Timestamp,
+					CurrencyPair: currentRates.CurrencyPair,
 					Alert:        "spotChange",
-				})
+					MovingMean:   movingMean,
+				}
+			}
+			// If the trend crosses 15 minutes
+			if movingMean.Trend > 900 {
+				out <- &model.AlertFormat{
+					Timestamp:    currentRates.Timestamp,
+					CurrencyPair: currentRates.CurrencyPair,
+					MovingMean:   movingMean,
+				}
 			}
 		} else {
-			mapData[currencyConRate.CurrencyPair] = moving_mean.New(rollingAverageInSec)
+			// Initialize the MovingMean if a new CurrencyPair comes in and adds it to the Map.
+			mm := moving_mean.New(rollingAverageInSec)
+			mm.Add(currentRates.Rate)
+			currencyPairRates[currentRates.CurrencyPair] = mm
 		}
 	}
-	return alerts, nil
+	close(out) // close the alert channel once all the currencyPair rates are processed
 }
 
-func floatRound(val float64, round int) float64 {
-	floatRound := math.Pow10(round)
+// Writes alerts to an output file
+func (a *AlertProcessor) SendAlert(in *model.AlertFormat) error {
+	switch trend := in.MovingMean.Trend; {
+	case trend > 900: // After 15 minutes continuous rise or fall
+		if (trend-900)%60 == 0 { // Throttle down the alert sending to one alert/minute
+			// Change alert message for continuous rise or fall
+			switch in.MovingMean.Direction { // Change alert type based on Direction
+			case moving_mean.Fall:
+				in.Alert = "falling"
+			case moving_mean.Rise:
+				in.Alert = "rising"
+			}
+			in.Seconds = int32(trend) // Set trend as seconds
+		}
+	}
+	in.MovingMean = nil // make movingMean pointer reference to nil to avoid printing in output file
+	// write alert to the output file
+	err := a.Encoder.Encode(&in)
+	if err != nil {
+		return fmt.Errorf("error encoding json to file %v", err)
+	}
+	return nil
+}
+
+// floatRound rounds the precision n times
+func floatRound(val float64, n int) float64 {
+	floatRound := math.Pow10(n)
 	valInt := int64(val * floatRound)
 	val = float64(valInt) / floatRound
 	return val
+}
+
+// NewAlertProcessor initializes AlertProcessor with Encoder and Decoder
+func NewAlertProcessor(encoder *json.Encoder, decoder *json.Decoder) AlertProcessorInterface {
+	return &AlertProcessor{
+		Decoder: decoder,
+		Encoder: encoder,
+	}
 }
