@@ -6,7 +6,6 @@ import (
 	"alert-system/log"
 	"alert-system/model"
 	"alert-system/version"
-	"encoding/json"
 
 	"github.com/spf13/cobra"
 )
@@ -33,61 +32,51 @@ func init() {
 func alertCmd(_ *cobra.Command, _ []string) error {
 	log.Infof("starting the alerting system with version: %s %s \n on %s => %s", version.Version, version.BuildDate,
 		version.OsArch, version.GoVersion)
-	// Creates an alert channel which receives alerts from AlertProcessor.
+	// Creates an alert channel which receives alerts from AlertProcessorInterface.
 	alertChannel := make(chan *model.AlertFormat)
-	// Creates an error channel which receives error from AlertProcessor.
+	// Creates an error channel which receives error from AlertProcessorInterface.
 	errorChannel := make(chan error)
+	// done resembles completion of process
+	done := make(chan bool, 1)
 
-	// Creates a reader object for the path provided.
-	reader, err := io_stream.Reader(inputPath)
+	// Create a reader object for the path provided.
+	inFile, decoder, err := io_stream.Read(inputPath)
 	if err != nil {
-		// return error
 		return err
 	}
-	// defer gets executed at the end of the Function.
-	defer reader.Close()
 
 	// Create a writer object for the path provided.
-	writer, err := io_stream.Writer(outputPath)
+	outFile, encoder, err := io_stream.Write(outputPath)
 	if err != nil {
 		return err
 	}
-	// defer gets executed at the end of the Function and closes the object
-	defer writer.Close()
-
-	// Create a new Decoder
-	decoder := json.NewDecoder(reader)
-	// Create a new Encoder
-	encoder := json.NewEncoder(writer)
+	// Defer gets executed at the end of the Function.
+	defer inFile.Close()
+	defer outFile.Close()
 
 	// Create a alert_processor object
-	processor := alert_processor.NewAlertProcessor(encoder, decoder)
-	// Go Routines to Process the alerts
-	go processor.ProcessAlerts(alertChannel, errorChannel)
+	processor := alert_processor.NewAlertProcessor(decoder, encoder, alertChannel, errorChannel, done)
+
+	// Go Routines to process the alerts
+	go processor.ProcessAlerts()
+	// Go Routines to send alerts
+	go processor.SendAlert()
 
 	// Listen to Alert and Error channel
 	// If Error channel got something then close the alertChannel and errorChannel
 	// and return the error received.
 	for true {
-		done := false
+		finish := false
 		select {
 		case err := <-errorChannel: // Listen errorChannel
 			close(errorChannel)
 			return err
-		case alerts, ok := <-alertChannel: // Listen AlertChannel
-			if ok {
-				// if alerts is received, send it
-				err := processor.SendAlert(alerts)
-				if err != nil {
-					return err
-				}
-			} else {
-				// if nothing is being received in the channel, assuming all the currencyPairs rates are processed.
-				done = true
+		case complete := <-done:
+			if complete {
+				finish = true
 			}
 		}
-		// break the loop if all the currencyPairs rates are processed
-		if done {
+		if finish {
 			break
 		}
 	}

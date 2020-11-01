@@ -1,6 +1,7 @@
 package alert_processor
 
 import (
+	"alert-system/io_stream"
 	"alert-system/model"
 	"encoding/json"
 	"os"
@@ -12,10 +13,11 @@ import (
 
 func TestAlertProcessor_ProcessAlerts(t *testing.T) {
 	tests := []struct {
-		name     string
-		setup    func(filepath string) (*json.Decoder, *os.File)
-		filePath string
-		check    func(chan *model.AlertFormat)
+		name            string
+		setup           func(filepath string) (*json.Decoder, *os.File)
+		filePath        string
+		check           func(chan *model.AlertFormat)
+		checkIfComplete func(chan bool)
 	}{
 		{
 			name: "detect spot rate changes with the stream of events coming in",
@@ -36,7 +38,13 @@ func TestAlertProcessor_ProcessAlerts(t *testing.T) {
 					i++
 				}
 				assert.Equal(t, i, 2)
-
+			},
+			checkIfComplete: func(bools chan bool) {
+				for actual := range bools {
+					if !reflect.DeepEqual(actual, true) {
+						t.Errorf("complete = %+v , got = %+v", true, false)
+					}
+				}
 			},
 		},
 		{
@@ -62,12 +70,16 @@ func TestAlertProcessor_ProcessAlerts(t *testing.T) {
 	for _, tt := range tests {
 		decoder, file := tt.setup(tt.filePath)
 		defer file.Close()
-		alertProcessor := AlertProcessor{
-			Decoder: decoder,
-		}
 		out := make(chan *model.AlertFormat)
 		errors := make(chan error)
-		go alertProcessor.ProcessAlerts(out, errors)
+		done := make(chan bool)
+		go func() {
+			<-done
+		}()
+		alertProcessor := NewAlertProcessor(&io_stream.JsonReader{
+			Parser: decoder,
+		}, nil, out, errors, done)
+		go alertProcessor.ProcessAlerts()
 		tt.check(out)
 	}
 }
