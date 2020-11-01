@@ -72,7 +72,6 @@ func (a *AlertProcessor) ProcessAlerts() {
 		}
 	}
 	a.IsComplete <- true
-	close(a.IsComplete)
 	close(a.OutChannel) // close the alert channel once all the currencyPair rates are processed
 }
 
