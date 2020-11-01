@@ -6,11 +6,9 @@ import (
 )
 
 // Queue is implementation of Queue DataStructure in Go.
-// Elements are stored in items in FIFO order.
-// mutex is introduced for thread safety.
 type Queue struct {
-	items []float64
-	mutex sync.Mutex
+	items []float64  // Elements are stored in items in FIFO order.
+	mutex sync.Mutex // mutex is introduced for thread safety.
 }
 
 // Enqueue adds an element to the Queue.

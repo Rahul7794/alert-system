@@ -6,20 +6,22 @@ import (
 	"os"
 )
 
-// WriterInterface which can be implemented to write any client
+// WriterInterface provides an abstraction over Writer
 type WriterInterface interface {
 	ParseToJson(c interface{}) error
 }
 
-// JsonWriter
 type JsonWriter struct {
 	Encoder *json.Encoder
 }
 
+// ParseToJson encodes struct to json
 func (writer *JsonWriter) ParseToJson(c interface{}) error {
 	return writer.Encoder.Encode(c)
 }
 
+// Writes takes filename as input and creates an Writer object and
+// returns *os.File object to close the file once finish writing.
 func Write(filename string) (*os.File, WriterInterface, error) {
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, os.ModePerm)
 	if err != nil {

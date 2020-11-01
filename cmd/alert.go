@@ -10,14 +10,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Command line Args
 var runCmd = &cobra.Command{
-	Use:   "alert",
-	Short: "Alert on currency conversion rate",
+	Use:   "alert",                             // SubCommand
+	Short: "Alert on currency conversion rate", // Short description of the SubCommand
 	Long:  "Implement an alerting service which will consume a file of currency conversion rates and\nproduce alerts for a number of situations.",
-	RunE:  alertCmd,
+	RunE:  alertCmd, // alertCmd processing the currency rates and producing alerts.
 }
 
+// inputPath for file of currency conversion rates.
 var inputPath string
+
+// outputPath for file of alerts produced in number of situations.
 var outputPath string
 
 func init() {
@@ -71,7 +75,7 @@ func alertCmd(_ *cobra.Command, _ []string) error {
 		case err := <-errorChannel: // Listen errorChannel
 			close(errorChannel)
 			return err
-		case complete := <-done:
+		case complete := <-done: // Listen done Channel
 			if complete {
 				finish = true
 			}

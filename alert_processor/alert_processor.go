@@ -7,15 +7,16 @@ import (
 	"math"
 )
 
-// 5 minutes rolling window in seconds
-const rollingAverageInSec int = 300
+const rollingAverageInSec int = 300       // 5 minutes rolling window in seconds
+const trendIntervalInSec int = 900        // 15 minutes rise/fall trend of CurrencyPair Rates
+const throttleAlertIntervalInSec int = 60 // 1 minute window to throttle outgoing alert
 
 // AlertProcessor process the alerts.
 type AlertProcessor struct {
 	OutChannel   chan *model.AlertFormat   // OutChannel contains alerts
 	ErrorChannel chan error                // ErrorChannel contains error
 	IsComplete   chan bool                 // IsComplete indicates if the processing is complete for gracefully close all the open channels
-	Reader       io_stream.ReaderInterface // Decoder stream the rates from the input file.
+	Reader       io_stream.ReaderInterface // Reader stream the rates from the input file.
 	Writer       io_stream.WriterInterface // Writer stream the alerts to the output file.
 }
 
@@ -56,8 +57,8 @@ func (a *AlertProcessor) ProcessAlerts() {
 					MovingMean:   movingMean,
 				}
 			}
-			// If the trend crosses 15 minutes
-			if movingMean.Trend > 900 {
+			// If the trend crosses 15 minutes send alerts to out channel
+			if movingMean.Trend > trendIntervalInSec {
 				a.OutChannel <- &model.AlertFormat{
 					Timestamp:    currentRates.Timestamp,
 					CurrencyPair: currentRates.CurrencyPair,
@@ -75,12 +76,12 @@ func (a *AlertProcessor) ProcessAlerts() {
 	close(a.OutChannel) // close the alert channel once all the currencyPair rates are processed
 }
 
-// Writes alerts to an output file
+// SendAlert listens to OutChannel and writes alerts to an output file
 func (a *AlertProcessor) SendAlert() {
 	for alert := range a.OutChannel {
 		switch trend := alert.MovingMean.Trend; {
-		case trend > 900: // After 15 minutes continuous rise or fall
-			if (trend-900)%60 == 0 { // Throttle down the alert sending to one alert/minute
+		case trend > trendIntervalInSec: // After 15 minutes continuous rise or fall
+			if (trend-trendIntervalInSec)%throttleAlertIntervalInSec == 0 { // Throttle down the alert sending to one alert/minute
 				// Change alert message for continuous rise or fall
 				switch alert.MovingMean.Direction { // Change alert type based on Direction
 				case moving_mean.Fall:
