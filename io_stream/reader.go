@@ -1,26 +1,36 @@
 package io_stream
 
 import (
-	"alert-system/alert_processor"
-	"alert-system/model"
 	"encoding/json"
 	"fmt"
 	"os"
 )
 
-func ReadJson(filename string) ([]model.AlertFormat, error) {
+//
+type ReaderInterface interface {
+	ParseFromJson(c interface{}) error
+	HasNext() bool
+}
+
+type JsonReader struct {
+	Parser *json.Decoder
+}
+
+func (reader *JsonReader) ParseFromJson(c interface{}) error {
+	return reader.Parser.Decode(c)
+}
+
+func (reader *JsonReader) HasNext() bool {
+	return reader.Parser.More()
+}
+
+func Read(filename string) (*os.File, ReaderInterface, error) {
 	file, err := os.Open(filename)
 	if err != nil {
-		return nil, fmt.Errorf("cannot open the file %v", err)
+		return nil, nil, fmt.Errorf("cannot open the file %v", err)
 	}
-	defer file.Close()
 	decoder := json.NewDecoder(file)
-	processor := alert_processor.AlertProcessor{
-		Decoder: decoder,
-	}
-	alerts, err := processor.ProcessAlerts()
-	if err != nil {
-		return nil, err
-	}
-	return alerts, nil
+	return file, &JsonReader{
+		Parser: decoder,
+	}, nil
 }

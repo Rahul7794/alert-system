@@ -23,8 +23,8 @@ func TestQueue(t *testing.T) {
 	}
 	for _, tt := range tests {
 		queue := tt.push()
-		dequeued := queue.Dequeue()
-		if !reflect.DeepEqual(dequeued, 10.22) {
+		dequeued, _ := queue.Dequeue()
+		if !reflect.DeepEqual(*dequeued, 10.22) {
 			t.Errorf("Dequeue()=%v, wanted %v", dequeued, 10.22)
 		}
 		if !reflect.DeepEqual(queue.Size(), 2) {

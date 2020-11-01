@@ -1,20 +1,32 @@
 package io_stream
 
 import (
-	"alert-system/model"
 	"encoding/json"
+	"fmt"
 	"os"
 )
 
-func WriteJson(filename string, alerts []model.AlertFormat) error {
+// WriterInterface which can be implemented to write any client
+type WriterInterface interface {
+	ParseToJson(c interface{}) error
+}
+
+// JsonWriter
+type JsonWriter struct {
+	Encoder *json.Encoder
+}
+
+func (writer *JsonWriter) ParseToJson(c interface{}) error {
+	return writer.Encoder.Encode(c)
+}
+
+func Write(filename string) (*os.File, WriterInterface, error) {
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, os.ModePerm)
 	if err != nil {
-		return err
+		return nil, nil, fmt.Errorf("cannot open the file %v", err)
 	}
-	defer file.Close()
 	encoder := json.NewEncoder(file)
-	for _, alert := range alerts {
-		encoder.Encode(&alert)
-	}
-	return nil
+	return file, &JsonWriter{
+		Encoder: encoder,
+	}, nil
 }
