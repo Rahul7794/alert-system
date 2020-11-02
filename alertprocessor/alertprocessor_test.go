@@ -1,7 +1,7 @@
-package alert_processor
+package alertprocessor
 
 import (
-	"alert-system/io_stream"
+	"alert-system/file"
 	"alert-system/model"
 	"encoding/json"
 	"os"
@@ -16,20 +16,20 @@ func TestAlertProcessor_ProcessAlerts(t *testing.T) {
 		name            string
 		setup           func(filepath string) (*json.Decoder, *os.File)
 		filePath        string
-		check           func(chan *model.AlertFormat)
+		check           func(chan model.AlertFormat)
 		checkIfComplete func(chan bool)
 	}{
 		{
 			name: "detect spot rate changes with the stream of events coming in",
 			setup: func(filepath string) (*json.Decoder, *os.File) {
-				file, err := os.Open(filepath)
+				open, err := os.Open(filepath)
 				if err != nil {
 					return nil, nil
 				}
-				return json.NewDecoder(file), file
+				return json.NewDecoder(open), open
 			},
 			filePath: "../test_files/input_alert.json",
-			check: func(out chan *model.AlertFormat) {
+			check: func(out chan model.AlertFormat) {
 				i := 0
 				for actual := range out {
 					if !reflect.DeepEqual(actual.Alert, "spotChange") {
@@ -37,7 +37,7 @@ func TestAlertProcessor_ProcessAlerts(t *testing.T) {
 					}
 					i++
 				}
-				assert.Equal(t, i, 2)
+				assert.Equal(t, i, 3)
 			},
 			checkIfComplete: func(bools chan bool) {
 				for actual := range bools {
@@ -50,14 +50,14 @@ func TestAlertProcessor_ProcessAlerts(t *testing.T) {
 		{
 			name: "no alert as the rate did not increase or decrease by 10%",
 			setup: func(filepath string) (*json.Decoder, *os.File) {
-				file, err := os.Open(filepath)
+				open, err := os.Open(filepath)
 				if err != nil {
 					return nil, nil
 				}
-				return json.NewDecoder(file), file
+				return json.NewDecoder(open), open
 			},
 			filePath: "../test_files/input_no_alert.json",
-			check: func(out chan *model.AlertFormat) {
+			check: func(out chan model.AlertFormat) {
 				i := 0
 				for range out {
 					i++
@@ -68,15 +68,15 @@ func TestAlertProcessor_ProcessAlerts(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		decoder, file := tt.setup(tt.filePath)
-		defer file.Close()
-		out := make(chan *model.AlertFormat)
+		decoder, infile := tt.setup(tt.filePath)
+		defer infile.Close()
+		out := make(chan model.AlertFormat)
 		errors := make(chan error)
 		done := make(chan bool)
 		go func() {
 			<-done
 		}()
-		alertProcessor := NewAlertProcessor(&io_stream.JsonReader{
+		alertProcessor := NewAlertProcessor(&file.JSONReader{
 			Parser: decoder,
 		}, nil, out, errors, done)
 		go alertProcessor.ProcessAlerts()
@@ -140,7 +140,7 @@ func TestAlertProcessor_FloatRoundFive(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		actualValue := floatRound(tt.input, tt.roundNumber)
+		actualValue := round(tt.input, tt.roundNumber)
 		if !reflect.DeepEqual(actualValue, tt.output) {
 			t.Errorf("FloatRound(%v, %v)=%v, wanted=%v", tt.input, tt.roundNumber, actualValue, tt.output)
 		}

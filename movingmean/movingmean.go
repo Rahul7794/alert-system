@@ -1,4 +1,4 @@
-package moving_mean
+package movingmean
 
 // Direction indicates Rise->0, Fall->1 or Flat->2 of rates coming in.
 type Direction int
@@ -64,8 +64,8 @@ func (mm *MovingMean) calculateTrend(newRate float64) {
 }
 
 // New initializes MovingMean for a given window
-func New(window int) *MovingMean {
-	return &MovingMean{
+func New(window int) MovingMean {
+	return MovingMean{
 		Size:      window,
 		Values:    Queue{},
 		Total:     0,

@@ -1,4 +1,4 @@
-package moving_mean
+package movingmean
 
 import (
 	"fmt"
@@ -35,7 +35,7 @@ func (queue *Queue) Dequeue() (*float64, error) {
 	return &lastItem, nil
 }
 
-// PeekLast return the first element in Queue.
+// PeekLast return the last element in the Queue.
 func (queue *Queue) PeekLast() (*float64, error) {
 	queue.mutex.Lock()
 	defer queue.mutex.Unlock()

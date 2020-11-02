@@ -1,4 +1,4 @@
-package io_stream
+package file
 
 import (
 	"encoding/json"
@@ -6,21 +6,17 @@ import (
 	"os"
 )
 
-// WriterInterface provides an abstraction over Writer
-type WriterInterface interface {
-	ParseToJson(c interface{}) error
-}
-
-type JsonWriter struct {
+// JSONWriter type has json.Encoder as field
+type JSONWriter struct {
 	Encoder *json.Encoder
 }
 
-// ParseToJson encodes struct to json
-func (writer *JsonWriter) ParseToJson(c interface{}) error {
+// ParseToJSON encodes struct to json
+func (writer *JSONWriter) ParseToJSON(c interface{}) error {
 	return writer.Encoder.Encode(c)
 }
 
-// Writes takes filename as input and creates an Writer object and
+// Write takes filename as input and creates an Writer object and
 // returns *os.File object to close the file once finish writing.
 func Write(filename string) (*os.File, WriterInterface, error) {
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, os.ModePerm)
@@ -28,7 +24,7 @@ func Write(filename string) (*os.File, WriterInterface, error) {
 		return nil, nil, fmt.Errorf("cannot open the file %v", err)
 	}
 	encoder := json.NewEncoder(file)
-	return file, &JsonWriter{
+	return file, &JSONWriter{
 		Encoder: encoder,
 	}, nil
 }

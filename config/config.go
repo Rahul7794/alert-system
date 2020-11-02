@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Provider defines config functions to be implemented
 type Provider interface {
 	ConfigFileUsed() string
 	Get(key string) interface{}
@@ -28,6 +29,7 @@ type Provider interface {
 
 var defaultConfig *viper.Viper
 
+// Config return config object
 func Config() Provider {
 	return defaultConfig
 }
