@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"alert-system/alert_processor"
-	"alert-system/io_stream"
+	"alert-system/alertprocessor"
+	"alert-system/file"
 	"alert-system/log"
 	"alert-system/model"
 	"alert-system/version"
@@ -14,7 +14,7 @@ import (
 var runCmd = &cobra.Command{
 	Use:   "alert",                             // SubCommand
 	Short: "Alert on currency conversion rate", // Short description of the SubCommand
-	Long:  "Implement an alerting service which will consume a file of currency conversion rates and\nproduce alerts for a number of situations.",
+	Long:  "Implement an alerting service which will consume a file of currency conversion rates and \n produce alerts for a number of situations.",
 	RunE:  alertCmd, // alertCmd processing the currency rates and producing alerts.
 }
 
@@ -28,6 +28,7 @@ func init() {
 	rootCmd.AddCommand(runCmd)
 	runCmd.Flags().StringVarP(&inputPath, "i", "i", "", "input path for the json file")
 	err := runCmd.MarkFlagRequired("i")
+	handleCommandError(err)
 	runCmd.Flags().StringVarP(&outputPath, "o", "o", "", "output path for the json file")
 	err = runCmd.MarkFlagRequired("o")
 	handleCommandError(err)
@@ -36,52 +37,45 @@ func init() {
 func alertCmd(_ *cobra.Command, _ []string) error {
 	log.Infof("starting the alerting system with version: %s %s \n on %s => %s", version.Version, version.BuildDate,
 		version.OsArch, version.GoVersion)
-	// Creates an alert channel which receives alerts from AlertProcessorInterface.
-	alertChannel := make(chan *model.AlertFormat)
-	// Creates an error channel which receives error from AlertProcessorInterface.
+	// Creates an alert channel which receives alerts
+	alertChannel := make(chan model.AlertFormat)
+	// Creates an error channel which receives error.
 	errorChannel := make(chan error)
 	// done resembles completion of process
 	done := make(chan bool, 1)
 
 	// Create a reader object for the path provided.
-	inFile, decoder, err := io_stream.Read(inputPath)
+	inFile, decoder, err := file.Read(inputPath)
 	if err != nil {
 		return err
 	}
+	defer inFile.Close()
 
 	// Create a writer object for the path provided.
-	outFile, encoder, err := io_stream.Write(outputPath)
+	outFile, encoder, err := file.Write(outputPath)
 	if err != nil {
 		return err
 	}
-	// Defer gets executed at the end of the Function.
-	defer inFile.Close()
 	defer outFile.Close()
 
-	// Create a alert_processor object
-	processor := alert_processor.NewAlertProcessor(decoder, encoder, alertChannel, errorChannel, done)
+	// Create a alertprocessor object
+	processor := alertprocessor.NewAlertProcessor(decoder, encoder, alertChannel, errorChannel, done)
 
-	// Go Routines to process the alerts
+	// Go routines to process the alerts
 	go processor.ProcessAlerts()
-	// Go Routines to send alerts
+	// Go routines to send alerts
 	go processor.SendAlert()
 
-	// Listen to Alert and Error channel
-	// If Error channel got something then close the alertChannel and errorChannel
-	// and return the error received.
+	// Listen to error and done channel
+	// If error channel receive error, return it
+	// if done channel receive signal, end the program
 	for true {
-		finish := false
 		select {
 		case err := <-errorChannel: // Listen errorChannel
-			close(errorChannel)
 			return err
-		case complete := <-done: // Listen done Channel
-			if complete {
-				finish = true
-			}
-		}
-		if finish {
-			break
+		case _ = <-done: // Listen done Channel
+			log.Info("complete !!!")
+			return nil
 		}
 	}
 	return nil

@@ -17,26 +17,26 @@ An "alerting" service which will consume a file of currency conversion rates and
 ├── .gitignore                          # files/folders to be ignored pushing to git.
 ├── go.mod                              # go.mod is the module definition file.
 ├── go.sum                              # go.sum contains all the dependency checksums, and is managed by the go tools
-├── alert_processor                     # processing of currency rates and sending alerts are done here.
+├── alertprocessor                      # processing of currency rates and sending alerts are done here.
 │   ├── processor.go
-│   ├── alert_processor.go
-│   └── alert_processor_test.go
+│   ├── alertprocessor.go
+│   └── alertprocessor_test.go
 ├── cmd                                 # commands and base commands are placed here.
 │   ├── alert.go                        # initialization of alert processor objects are done here.
 │   ├── root.go
 │   └── version.go
 ├── config                              # config files for the project.
 │   └── config.go
-├── io_stream                           # reader and writer interface and functions are implemented here.
+├── file                                # reader and writer interface and functions are implemented here.
 │   ├── reader.go
 │   └── writer.go
 ├── log                                 # loging interfaces are implemented here for the project.
 │   └── log.go
 ├── model                               # structs and data models for the project.
 │   └── model.go
-├── moving_mean                         # logic for calculating moving mean and trends for currency pairs is done here.
-│   ├── moving_mean.go
-│   ├── moving_mean_test.go
+├── movingmean                          # logic for calculating moving mean and trends for currency pairs is done here.
+│   ├── movingmean.go
+│   ├── movingmean_test.go
 │   ├── queue.go                        # implementation of Queue data structure and basic operations of Queue.
 │   └── queue_test.go
 ├── test_files                          # all the input and output test files.

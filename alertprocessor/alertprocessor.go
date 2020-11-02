@@ -1,9 +1,10 @@
-package alert_processor
+package alertprocessor
 
 import (
-	"alert-system/io_stream"
+	"alert-system/file"
+	"alert-system/log"
 	"alert-system/model"
-	"alert-system/moving_mean"
+	"alert-system/movingmean"
 	"math"
 )
 
@@ -13,11 +14,11 @@ const throttleAlertIntervalInSec int = 60 // 1 minute window to throttle outgoin
 
 // AlertProcessor process the alerts.
 type AlertProcessor struct {
-	OutChannel   chan *model.AlertFormat   // OutChannel contains alerts
-	ErrorChannel chan error                // ErrorChannel contains error
-	IsComplete   chan bool                 // IsComplete indicates if the processing is complete for gracefully close all the open channels
-	Reader       io_stream.ReaderInterface // Reader stream the rates from the input file.
-	Writer       io_stream.WriterInterface // Writer stream the alerts to the output file.
+	OutChannel   chan model.AlertFormat // OutChannel contains alerts
+	ErrorChannel chan<- error           // ErrorChannel contains error
+	IsComplete   chan<- bool            // IsComplete indicates if the processing is complete for gracefully close all the open channels
+	Reader       file.ReaderInterface   // Reader stream the rates from the input file.
+	Writer       file.WriterInterface   // Writer stream the alerts to the output file.
 }
 
 // checkSpotRateChange checks if there rate has dropped/increased by 10%.
@@ -28,13 +29,16 @@ func checkSpotRateChange(currentValue, previousValue float64) bool {
 
 // ProcessAlerts consumes stream of currency conversion rates and produces alerts for a number of situations.
 func (a *AlertProcessor) ProcessAlerts() {
+	log.Info("processing currency pairs record ...")
+	i := 0 // keep count of record processed
 	// create a Map to store moving average for each currency pair => Map[CurrencyPair, MovingAverage]
-	currencyPairRates := make(map[string]*moving_mean.MovingMean)
+	currencyPairRates := make(map[string]movingmean.MovingMean)
 	// Decoder.More() streams the json until reaches EOF
 	for a.Reader.HasNext() {
+		i++
 		// Deserialize json to CurrencyConversionRates
 		var currentRates model.CurrencyConversionRates
-		err := a.Reader.ParseFromJson(&currentRates)
+		err := a.Reader.ParseFromJSON(&currentRates)
 		if err != nil {
 			// Outputs error to the out <- channel, if there is an error deserializing json.
 			a.ErrorChannel <- err
@@ -48,18 +52,18 @@ func (a *AlertProcessor) ProcessAlerts() {
 			movingMean.Add(currentRates.Rate)
 			currencyPairRates[currentRates.CurrencyPair] = movingMean
 			// Check for > 10% change in rate
-			if checkSpotRateChange(currentRates.Rate, floatRound(movingMean.Average(), 5)) {
+			if checkSpotRateChange(currentRates.Rate, round(movingMean.Average(), 5)) {
 				// if there is > 10% change, send the alert in the channel
-				a.OutChannel <- &model.AlertFormat{
+				a.OutChannel <- model.AlertFormat{
 					Timestamp:    currentRates.Timestamp,
 					CurrencyPair: currentRates.CurrencyPair,
 					Alert:        "spotChange",
 					MovingMean:   movingMean,
 				}
 			}
-			// If the trend crosses 15 minutes send alerts to out channel
+			//If the trend crosses 15 minutes send alerts to out channel
 			if movingMean.Trend > trendIntervalInSec {
-				a.OutChannel <- &model.AlertFormat{
+				a.OutChannel <- model.AlertFormat{
 					Timestamp:    currentRates.Timestamp,
 					CurrencyPair: currentRates.CurrencyPair,
 					MovingMean:   movingMean,
@@ -67,51 +71,56 @@ func (a *AlertProcessor) ProcessAlerts() {
 			}
 		} else {
 			// Initialize the MovingMean if a new CurrencyPair comes in and adds it to the Map.
-			mm := moving_mean.New(rollingAverageInSec)
+			mm := movingmean.New(rollingAverageInSec)
 			mm.Add(currentRates.Rate)
 			currencyPairRates[currentRates.CurrencyPair] = mm
 		}
 	}
-	a.IsComplete <- true
-	close(a.OutChannel) // close the alert channel once all the currencyPair rates are processed
+	log.Infof("processed %d currency pairs record", i)
+	close(a.OutChannel)
 }
 
 // SendAlert listens to OutChannel and writes alerts to an output file
 func (a *AlertProcessor) SendAlert() {
 	for alert := range a.OutChannel {
-		switch trend := alert.MovingMean.Trend; {
-		case trend > trendIntervalInSec: // After 15 minutes continuous rise or fall
-			if (trend-trendIntervalInSec)%throttleAlertIntervalInSec == 0 { // Throttle down the alert sending to one alert/minute
-				// Change alert message for continuous rise or fall
-				switch alert.MovingMean.Direction { // Change alert type based on Direction
-				case moving_mean.Fall:
+		trend := alert.MovingMean.Trend
+		// After 15 minutes of continuous rise or fall
+		if trend > trendIntervalInSec && alert.Alert == "" {
+			// Throttle down the alert sending to one alert/minute
+			if (trend-trendIntervalInSec)%throttleAlertIntervalInSec == 0 {
+				switch alert.MovingMean.Direction {
+				case movingmean.Fall:
 					alert.Alert = "falling"
-				case moving_mean.Rise:
+				case movingmean.Rise:
 					alert.Alert = "rising"
 				}
-				alert.Seconds = int32(trend) // Set trend as seconds
+				alert.Seconds = int32(trend)
+				err := a.Writer.ParseToJSON(alert)
+				if err != nil {
+					a.ErrorChannel <- err
+				}
+			}
+		} else {
+			err := a.Writer.ParseToJSON(alert)
+			if err != nil {
+				a.ErrorChannel <- err
 			}
 		}
-		alert.MovingMean = nil // make movingMean pointer reference to nil to avoid printing in output file
-		// write alert to the output file
-		err := a.Writer.ParseToJson(alert)
-		if err != nil {
-			a.ErrorChannel <- err
-		}
 	}
+	a.IsComplete <- true
 }
 
-// floatRound rounds the precision n times
-func floatRound(val float64, n int) float64 {
+// round rounds the precision n times
+func round(val float64, n int) float64 {
 	floatRound := math.Pow10(n)
 	valInt := int64(val * floatRound)
 	val = float64(valInt) / floatRound
 	return val
 }
 
-// NewAlertProcessor initializes alert_processor object
-func NewAlertProcessor(reader io_stream.ReaderInterface, writer io_stream.WriterInterface,
-	out chan *model.AlertFormat, error chan error, done chan bool) AlertProcessorInterface {
+// NewAlertProcessor initializes alertprocessor object
+func NewAlertProcessor(reader file.ReaderInterface, writer file.WriterInterface,
+	out chan model.AlertFormat, error chan error, done chan bool) ProcessorInterface {
 	return &AlertProcessor{
 		Reader:       reader,
 		Writer:       writer,

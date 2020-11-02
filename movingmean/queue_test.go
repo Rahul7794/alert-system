@@ -1,4 +1,4 @@
-package moving_mean
+package movingmean
 
 import (
 	"reflect"

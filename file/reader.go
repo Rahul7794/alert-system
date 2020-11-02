@@ -1,4 +1,4 @@
-package io_stream
+package file
 
 import (
 	"encoding/json"
@@ -6,23 +6,18 @@ import (
 	"os"
 )
 
-// ReaderInterface provides an abstraction over Reader
-type ReaderInterface interface {
-	ParseFromJson(c interface{}) error
-	HasNext() bool
-}
-
-type JsonReader struct {
+// JSONReader type has json.Decoder as field
+type JSONReader struct {
 	Parser *json.Decoder
 }
 
-// ParseFromJson decodes json to struct provided
-func (reader *JsonReader) ParseFromJson(c interface{}) error {
+// ParseFromJSON decodes json to struct provided
+func (reader *JSONReader) ParseFromJSON(c interface{}) error {
 	return reader.Parser.Decode(c)
 }
 
 // HasNext checks if there is any more elements to be decoded
-func (reader *JsonReader) HasNext() bool {
+func (reader *JSONReader) HasNext() bool {
 	return reader.Parser.More()
 }
 
@@ -34,7 +29,7 @@ func Read(filename string) (*os.File, ReaderInterface, error) {
 		return nil, nil, fmt.Errorf("cannot open the file %v", err)
 	}
 	decoder := json.NewDecoder(file)
-	return file, &JsonReader{
+	return file, &JSONReader{
 		Parser: decoder,
 	}, nil
 }

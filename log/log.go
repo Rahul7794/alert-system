@@ -7,6 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Logger provides logging interface
 type Logger interface {
 	Debug(args ...interface{})
 	Debugf(format string, args ...interface{})
@@ -40,10 +41,12 @@ func init() {
 	defaultLogger = newLogrusLogger(config.Config())
 }
 
+// NewLogger returns logger object
 func NewLogger(cfg config.Provider) *logrus.Logger {
 	return newLogrusLogger(cfg)
 }
 
+// GetLogger return defaultLogger
 func GetLogger() *logrus.Logger {
 	return defaultLogger
 }
@@ -80,13 +83,16 @@ func newLogrusLogger(cfg config.Provider) *logrus.Logger {
 	return l
 }
 
+// Fields represents map of fields and logging information
 type Fields map[string]interface{}
 
+// With returns Fields
 func (f Fields) With(k string, v interface{}) Fields {
 	f[k] = v
 	return f
 }
 
+// WithFields return Fields with Fields Name
 func (f Fields) WithFields(f2 Fields) Fields {
 	for k, v := range f2 {
 		f[k] = v
@@ -94,6 +100,7 @@ func (f Fields) WithFields(f2 Fields) Fields {
 	return f
 }
 
+// WithFields return Fields with Fields Name
 func WithFields(fields Fields) Logger {
 	return defaultLogger.WithFields(logrus.Fields(fields))
 }
