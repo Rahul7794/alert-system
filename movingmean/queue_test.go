@@ -13,11 +13,11 @@ func TestQueue(t *testing.T) {
 		{
 			name: "Test basic Operations of Queue",
 			push: func() *Queue {
-				queue := Queue{}
+				queue := NewQueue()
 				queue.Enqueue(10.22)
 				queue.Enqueue(20.22)
 				queue.Enqueue(30.22)
-				return &queue
+				return queue
 			},
 		},
 	}

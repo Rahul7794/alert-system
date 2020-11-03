@@ -3,7 +3,7 @@ package alertprocessor
 import (
 	"math"
 
-	"alert-system/file"
+	"alert-system/io"
 	"alert-system/log"
 	"alert-system/model"
 	"alert-system/movingmean"
@@ -18,8 +18,8 @@ type AlertProcessor struct {
 	OutChannel   chan model.AlertFormat // OutChannel contains alerts
 	ErrorChannel chan<- error           // ErrorChannel contains error
 	IsComplete   chan<- bool            // IsComplete indicates if the processing is complete for gracefully close all the open channels
-	Reader       file.ReaderInterface   // Reader stream the rates from the input file.
-	Writer       file.WriterInterface   // Writer stream the alerts to the output file.
+	Reader       io.ReaderInterface     // Reader stream the rates from the input file.
+	Writer       io.WriterInterface     // Writer stream the alerts to the output file.
 }
 
 // checkSpotRateChange checks if there rate has dropped/increased by 10%.
@@ -120,7 +120,7 @@ func round(val float64, n int) float64 {
 }
 
 // NewAlertProcessor initializes alertprocessor object
-func NewAlertProcessor(reader file.ReaderInterface, writer file.WriterInterface,
+func NewAlertProcessor(reader io.ReaderInterface, writer io.WriterInterface,
 	out chan model.AlertFormat, error chan error, done chan bool) ProcessorInterface {
 	return &AlertProcessor{
 		Reader:       reader,

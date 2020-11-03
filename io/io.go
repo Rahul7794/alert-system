@@ -1,4 +1,4 @@
-package file
+package io
 
 // WriterInterface provides an abstraction over Writer
 type WriterInterface interface {

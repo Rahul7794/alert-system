@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"alert-system/file"
+	"alert-system/io"
 	"alert-system/model"
 
 	"github.com/stretchr/testify/assert"
@@ -77,7 +77,7 @@ func TestAlertProcessor_ProcessAlerts(t *testing.T) {
 		go func() {
 			<-done
 		}()
-		alertProcessor := NewAlertProcessor(&file.JSONReader{
+		alertProcessor := NewAlertProcessor(&io.JSONReader{
 			Parser: decoder,
 		}, nil, out, errors, done)
 		go alertProcessor.ProcessAlerts()

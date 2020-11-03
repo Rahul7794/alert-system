@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"alert-system/alertprocessor"
-	"alert-system/file"
+	"alert-system/io"
 	"alert-system/log"
 	"alert-system/model"
 	"alert-system/version"
@@ -45,14 +45,14 @@ func alertCmd(_ *cobra.Command, _ []string) error {
 	done := make(chan bool, 1)
 
 	// Create a reader object for the path provided.
-	reader, err := file.Read(inputPath)
+	reader, err := io.Read(inputPath)
 	if err != nil {
 		return err
 	}
 	defer reader.Close()
 
 	// Create a writer object for the path provided.
-	writer, err := file.Write(outputPath)
+	writer, err := io.Write(outputPath)
 	if err != nil {
 		return err
 	}
