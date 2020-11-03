@@ -45,21 +45,21 @@ func alertCmd(_ *cobra.Command, _ []string) error {
 	done := make(chan bool, 1)
 
 	// Create a reader object for the path provided.
-	inFile, decoder, err := file.Read(inputPath)
+	reader, err := file.Read(inputPath)
 	if err != nil {
 		return err
 	}
-	defer inFile.Close()
+	defer reader.Close()
 
 	// Create a writer object for the path provided.
-	outFile, encoder, err := file.Write(outputPath)
+	writer, err := file.Write(outputPath)
 	if err != nil {
 		return err
 	}
-	defer outFile.Close()
+	defer writer.Close()
 
 	// Create a alertprocessor object
-	processor := alertprocessor.NewAlertProcessor(decoder, encoder, alertChannel, errorChannel, done)
+	processor := alertprocessor.NewAlertProcessor(reader, writer, alertChannel, errorChannel, done)
 
 	// Go routines to process the alerts
 	go processor.ProcessAlerts()
