@@ -27,6 +27,7 @@ An "alerting" service which will consume a file of currency conversion rates and
 │   └── version.go
 ├── config                              # config files for the project.
 │   └── config.go
+├── examples                            # all the sample input and output test files.
 ├── file                                # reader and writer interface and functions are implemented here.
 │   ├── io.go
 │   ├── reader.go
@@ -40,7 +41,6 @@ An "alerting" service which will consume a file of currency conversion rates and
 │   ├── movingmean_test.go
 │   ├── queue.go                        # implementation of Queue data structure and basic operations of Queue.
 │   └── queue_test.go
-├── test_files                          # all the input and output test files.
 └── version                             # keeps track of version for a project. 
     └── version.go
 ```

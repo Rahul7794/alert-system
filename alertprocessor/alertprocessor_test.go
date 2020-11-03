@@ -29,7 +29,7 @@ func TestAlertProcessor_ProcessAlerts(t *testing.T) {
 				}
 				return json.NewDecoder(open), open
 			},
-			filePath: "../test_files/input_alert.json",
+			filePath: "../examples/input_alert.json",
 			check: func(out chan model.AlertFormat) {
 				i := 0
 				for actual := range out {
@@ -57,7 +57,7 @@ func TestAlertProcessor_ProcessAlerts(t *testing.T) {
 				}
 				return json.NewDecoder(open), open
 			},
-			filePath: "../test_files/input_no_alert.json",
+			filePath: "../examples/input_no_alert.json",
 			check: func(out chan model.AlertFormat) {
 				i := 0
 				for range out {
