@@ -28,6 +28,7 @@ An "alerting" service which will consume a file of currency conversion rates and
 ├── config                              # config files for the project.
 │   └── config.go
 ├── file                                # reader and writer interface and functions are implemented here.
+│   ├── io.go
 │   ├── reader.go
 │   └── writer.go
 ├── log                                 # loging interfaces are implemented here for the project.

@@ -9,6 +9,12 @@ import (
 // JSONWriter type has json.Encoder as field
 type JSONWriter struct {
 	Encoder *json.Encoder
+	File    *os.File
+}
+
+// Close closes the File, rendering it unusable for I/O.
+func (writer *JSONWriter) Close() error {
+	return writer.File.Close()
 }
 
 // ParseToJSON encodes struct to json
@@ -18,13 +24,14 @@ func (writer *JSONWriter) ParseToJSON(c interface{}) error {
 
 // Write takes filename as input and creates an Writer object and
 // returns *os.File object to close the file once finish writing.
-func Write(filename string) (*os.File, WriterInterface, error) {
+func Write(filename string) (WriterInterface, error) {
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, os.ModePerm)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cannot open the file %v", err)
+		return nil, fmt.Errorf("cannot open the file %v", err)
 	}
 	encoder := json.NewEncoder(file)
-	return file, &JSONWriter{
+	return &JSONWriter{
 		Encoder: encoder,
+		File:    file,
 	}, nil
 }
