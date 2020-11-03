@@ -69,7 +69,7 @@ make build
 
 `make test`
 
-Note: **The application expects input path where the currency conversion rates is available \n
+Note: **The application expects input path where the currency conversion rates is available
 and output path where it wants to write the alerts.**
 
   

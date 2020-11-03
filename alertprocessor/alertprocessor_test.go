@@ -1,12 +1,13 @@
 package alertprocessor
 
 import (
-	"alert-system/file"
-	"alert-system/model"
 	"encoding/json"
 	"os"
 	"reflect"
 	"testing"
+
+	"alert-system/file"
+	"alert-system/model"
 
 	"github.com/stretchr/testify/assert"
 )

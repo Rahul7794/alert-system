@@ -1,11 +1,12 @@
 package alertprocessor
 
 import (
+	"math"
+
 	"alert-system/file"
 	"alert-system/log"
 	"alert-system/model"
 	"alert-system/movingmean"
-	"math"
 )
 
 const rollingAverageInSec int = 300       // 5 minutes rolling window in seconds
@@ -61,7 +62,7 @@ func (a *AlertProcessor) ProcessAlerts() {
 					MovingMean:   movingMean,
 				}
 			}
-			//If the trend crosses 15 minutes send alerts to out channel
+			// If the trend crosses 15 minutes send alerts to out channel
 			if movingMean.Trend > trendIntervalInSec {
 				a.OutChannel <- model.AlertFormat{
 					Timestamp:    currentRates.Timestamp,

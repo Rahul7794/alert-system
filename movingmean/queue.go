@@ -7,8 +7,8 @@ import (
 
 // Queue is implementation of Queue DataStructure in Go.
 type Queue struct {
-	items []float64  // Elements are stored in items in FIFO order.
-	mutex sync.Mutex // mutex is introduced for thread safety.
+	items []float64   // Elements are stored in items in FIFO order.
+	mutex *sync.Mutex // mutex is introduced for thread safety.
 }
 
 // Enqueue adds an element to the Queue.
@@ -59,4 +59,11 @@ func (queue *Queue) Reset() {
 	defer queue.mutex.Unlock()
 
 	queue.items = nil
+}
+
+func NewQueue() *Queue {
+	queue := &Queue{}
+	queue.items = make([]float64, 0)
+	queue.mutex = new(sync.Mutex)
+	return queue
 }

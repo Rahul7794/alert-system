@@ -69,14 +69,13 @@ func alertCmd(_ *cobra.Command, _ []string) error {
 	// Listen to error and done channel
 	// If error channel receive error, return it
 	// if done channel receive signal, end the program
-	for true {
+	for {
 		select {
 		case err := <-errorChannel: // Listen errorChannel
 			return err
-		case _ = <-done: // Listen done Channel
+		case <-done: // Listen done Channel
 			log.Info("complete !!!")
 			return nil
 		}
 	}
-	return nil
 }

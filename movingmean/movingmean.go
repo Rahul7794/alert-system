@@ -13,7 +13,7 @@ const (
 // A MovingMean keeps track of the rolling average of a currency pair's rates and its change Direction.
 type MovingMean struct {
 	Size      int       // Size of the window
-	Values    Queue     // Values in the queue for the window
+	Values    *Queue    // Values in the queue for the window
 	Total     float64   // Total of rates for the current window
 	Count     int       // current length of Values, always <= Size
 	Direction Direction // last change Direction
@@ -67,7 +67,7 @@ func (mm *MovingMean) calculateTrend(newRate float64) {
 func New(window int) MovingMean {
 	return MovingMean{
 		Size:      window,
-		Values:    Queue{},
+		Values:    NewQueue(),
 		Total:     0,
 		Count:     0,
 		Direction: Flat,
