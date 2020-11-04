@@ -3,7 +3,6 @@ package alertprocessor
 import (
 	"math"
 
-	"alert-system/io"
 	"alert-system/log"
 	"alert-system/model"
 	"alert-system/movingmean"
@@ -13,15 +12,6 @@ const rollingAverageInSec int = 300       // 5 minutes rolling window in seconds
 const trendIntervalInSec int = 900        // 15 minutes rise/fall trend of CurrencyPair Rates
 const throttleAlertIntervalInSec int = 60 // 1 minute window to throttle outgoing alert
 
-// AlertProcessor process the alerts.
-type AlertProcessor struct {
-	OutChannel   chan model.AlertFormat // OutChannel contains alerts
-	ErrorChannel chan<- error           // ErrorChannel contains error
-	IsComplete   chan<- bool            // IsComplete indicates if the processing is complete for gracefully close all the open channels
-	Reader       io.ReaderInterface     // Reader stream the rates from the input file.
-	Writer       io.WriterInterface     // Writer stream the alerts to the output file.
-}
-
 // checkSpotRateChange checks if there rate has dropped/increased by 10%.
 func checkSpotRateChange(currentValue, previousValue float64) bool {
 	changePercent := math.Abs(((currentValue - previousValue) / previousValue) * 100.0)
@@ -29,7 +19,7 @@ func checkSpotRateChange(currentValue, previousValue float64) bool {
 }
 
 // ProcessAlerts consumes stream of currency conversion rates and produces alerts for a number of situations.
-func (a *AlertProcessor) ProcessAlerts() {
+func (a *InputTypeProcessor) ProcessAlerts() {
 	log.Info("processing currency pairs record ...")
 	i := 0 // keep count of record processed
 	// create a Map to store moving average for each currency pair => Map[CurrencyPair, MovingAverage]
@@ -82,7 +72,7 @@ func (a *AlertProcessor) ProcessAlerts() {
 }
 
 // SendAlert listens to OutChannel and writes alerts to an output file
-func (a *AlertProcessor) SendAlert() {
+func (a *InputTypeProcessor) SendAlert() {
 	for alert := range a.OutChannel {
 		trend := alert.MovingMean.Trend
 		// After 15 minutes of continuous rise or fall
@@ -119,14 +109,13 @@ func round(val float64, n int) float64 {
 	return val
 }
 
-// NewAlertProcessor initializes alertprocessor object
-func NewAlertProcessor(reader io.ReaderInterface, writer io.WriterInterface,
-	out chan model.AlertFormat, error chan error, done chan bool) ProcessorInterface {
-	return &AlertProcessor{
-		Reader:       reader,
-		Writer:       writer,
-		OutChannel:   out,
-		ErrorChannel: error,
-		IsComplete:   done,
+// NewFileTypeInputProcessor initializes alertprocessor object for file as inputType
+func NewFileTypeInputProcessor(input *InputTypeProcessor) AlertProcessor {
+	return &InputTypeProcessor{
+		Reader:       input.Reader,
+		Writer:       input.Writer,
+		OutChannel:   input.OutChannel,
+		ErrorChannel: input.ErrorChannel,
+		IsComplete:   input.IsComplete,
 	}
 }

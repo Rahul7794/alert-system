@@ -77,9 +77,15 @@ func TestAlertProcessor_ProcessAlerts(t *testing.T) {
 		go func() {
 			<-done
 		}()
-		alertProcessor := NewAlertProcessor(&io.JSONReader{
-			Parser: decoder,
-		}, nil, out, errors, done)
+		alertProcessor := NewFileTypeInputProcessor(&InputTypeProcessor{
+			OutChannel:   out,
+			ErrorChannel: errors,
+			IsComplete:   done,
+			Reader: &io.JSONReader{
+				Parser: decoder,
+			},
+			Writer: nil,
+		})
 		go alertProcessor.ProcessAlerts()
 		tt.check(out)
 	}

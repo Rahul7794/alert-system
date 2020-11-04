@@ -61,6 +61,7 @@ func (queue *Queue) Reset() {
 	queue.items = nil
 }
 
+// NewQueue return Queue object
 func NewQueue() *Queue {
 	queue := &Queue{}
 	queue.items = make([]float64, 0)

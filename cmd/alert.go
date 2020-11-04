@@ -59,7 +59,13 @@ func alertCmd(_ *cobra.Command, _ []string) error {
 	defer writer.Close()
 
 	// Create a alertprocessor object
-	processor := alertprocessor.NewAlertProcessor(reader, writer, alertChannel, errorChannel, done)
+	processor := alertprocessor.NewProcessorObject("fileType", alertprocessor.InputTypeProcessor{
+		OutChannel:   alertChannel,
+		ErrorChannel: errorChannel,
+		IsComplete:   done,
+		Reader:       reader,
+		Writer:       writer,
+	})
 
 	// Go routines to process the alerts
 	go processor.ProcessAlerts()
