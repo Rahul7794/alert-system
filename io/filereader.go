@@ -2,8 +2,9 @@ package io
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
+
+	"alert-system/log"
 )
 
 // JSONReader type has json.Decoder as field
@@ -27,16 +28,15 @@ func (reader *JSONReader) Close() error {
 	return reader.File.Close()
 }
 
-// Read takes filename as input and creates an Reader object and
-// returns *os.File object to close file once finish reading.
-func Read(filename string) (ReaderInterface, error) {
+// NewFileReader takes filename as input and creates an ReaderInterface object
+func NewFileReader(filename string) ReaderInterface {
 	file, err := os.Open(filename)
 	if err != nil {
-		return nil, fmt.Errorf("cannot open the file %v", err)
+		log.Fatalf("cannot open the file %v", err)
 	}
 	decoder := json.NewDecoder(file)
 	return &JSONReader{
 		Parser: decoder,
 		File:   file,
-	}, nil
+	}
 }

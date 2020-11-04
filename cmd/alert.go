@@ -44,18 +44,12 @@ func alertCmd(_ *cobra.Command, _ []string) error {
 	// done resembles completion of process
 	done := make(chan bool, 1)
 
-	// Create a reader object for the path provided.
-	reader, err := io.Read(inputPath)
-	if err != nil {
-		return err
-	}
+	// Create a reader object.
+	reader := io.NewReader("fileType", inputPath)
 	defer reader.Close()
 
-	// Create a writer object for the path provided.
-	writer, err := io.Write(outputPath)
-	if err != nil {
-		return err
-	}
+	// Create a writer object.
+	writer := io.NewWriter("fileType", outputPath)
 	defer writer.Close()
 
 	// Create a alertprocessor object

@@ -2,8 +2,9 @@ package io
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
+
+	"alert-system/log"
 )
 
 // JSONWriter type has json.Encoder as field
@@ -22,16 +23,15 @@ func (writer *JSONWriter) ParseToJSON(c interface{}) error {
 	return writer.Encoder.Encode(c)
 }
 
-// Write takes filename as input and creates an Writer object and
-// returns *os.File object to close the file once finish writing.
-func Write(filename string) (WriterInterface, error) {
+// NewFileWriter takes string as input and creates an WriterInterface object
+func NewFileWriter(filename string) WriterInterface {
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, os.ModePerm)
 	if err != nil {
-		return nil, fmt.Errorf("cannot open the file %v", err)
+		log.Fatalf("cannot open the file %v", err)
 	}
 	encoder := json.NewEncoder(file)
 	return &JSONWriter{
 		Encoder: encoder,
 		File:    file,
-	}, nil
+	}
 }
